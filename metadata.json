@@ -1,0 +1,6 @@
+{
+  "name": "TreeGuard AI",
+  "description": "Longitudinal Urban Forest Intelligence, AI Tree Doctor, Storm Memory & Maintenance Optimization",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

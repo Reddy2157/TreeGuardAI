@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Outer Bio-Shield Hexagon -->
+    <path
+        android:fillColor="#1A35D07F"
+        android:strokeColor="#55DDE0"
+        android:strokeWidth="2.5"
+        android:pathData="M54,22 L80,36 L80,64 C80,76 68,84 54,88 C40,84 28,76 28,64 L28,36 Z" />
+    <!-- Glowing Emerald Tree Canopy -->
+    <path
+        android:fillColor="#35D07F"
+        android:pathData="M54,28 C44,28 37,35 37,44 C37,46 37.5,48 38.3,49.7 C34.5,51.8 32,55.8 32,60.5 C32,67.4 37.6,73 44.5,73 L63.5,73 C70.4,73 76,67.4 76,60.5 C76,55.8 73.5,51.8 69.7,49.7 C70.5,48 71,46 71,44 C71,35 64,28 54,28 Z" />
+    <!-- Trunk and Cyan Telemetry Veins -->
+    <path
+        android:fillColor="#071410"
+        android:pathData="M51,52 L57,52 L58,82 L50,82 Z" />
+    <path
+        android:fillColor="#55DDE0"
+        android:pathData="M53,46 L55,46 L55,82 L53,82 Z" />
+    <path
+        android:fillColor="#55DDE0"
+        android:pathData="M54,58 L44,49 L45.5,47.5 L54,55.5 Z" />
+    <path
+        android:fillColor="#55DDE0"
+        android:pathData="M54,62 L64,53 L62.5,51.5 L54,59.5 Z" />
+</vector>

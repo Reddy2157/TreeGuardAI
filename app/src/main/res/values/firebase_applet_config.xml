@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<resources>
+    <string name="firestore_database_id" translatable="false">ai-studio-android-treeguar-a628b443-19b9-4810-b76d-1b1086876a86</string>
+    <string name="recaptcha_site_key" translatable="false">6LfLXQkuAAAAANLlTaNTqiFVahKpxuK1q6hVDML5</string>
+</resources>

@@ -1,0 +1,188 @@
+{
+  "entities": {
+    "TreeRecord": {
+      "title": "TreeRecord",
+      "description": "Digital Tree Passport record representing a registered urban tree and its latest health, risk priority, and Stress Debt telemetry.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the authenticated user who owns this tree record." },
+        "treeCode": { "type": "string", "description": "Human-readable permanent tree passport ID (e.g., TG-VJA-0001)." },
+        "species": { "type": "string", "description": "Tree species name." },
+        "latitude": { "type": "number", "description": "GPS latitude coordinate." },
+        "longitude": { "type": "number", "description": "GPS longitude coordinate." },
+        "zone": { "type": "string", "description": "Municipal ward, street, or zone description." },
+        "registrationType": { "type": "string", "enum": ["LIVE_GPS", "MANUAL", "DEMO_SEED"], "description": "Source of registration coordinates." },
+        "visualCondition": { "type": "string", "enum": ["Healthy appearance", "Monitor", "Needs inspection", "Unclear"], "description": "Latest visual screening condition label." },
+        "currentPriority": { "type": "string", "enum": ["Low", "Moderate", "High", "Critical"], "description": "Inspection priority category." },
+        "currentRiskScore": { "type": "number", "description": "Explainable inspection-priority score R (0-100)." },
+        "structuralScore": { "type": "number", "description": "Structural concerns factor S (-1 if unknown, or 0-100)." },
+        "exposureScore": { "type": "number", "description": "Public/property exposure factor E (-1 if unknown, or 0-100)." },
+        "declineScore": { "type": "number", "description": "Visible decline factor D (-1 if unknown, or 0-100)." },
+        "weatherScore": { "type": "number", "description": "Weather concerns factor W (-1 if unknown, or 0-100)." },
+        "historyScore": { "type": "number", "description": "Inspection history factor T (-1 if unknown, or 0-100)." },
+        "stressDebt": { "type": "number", "description": "Current accumulated Tree Stress Debt TD_t." },
+        "previousStressDebt": { "type": "number", "description": "Previous accumulated Tree Stress Debt TD_(t-1)." },
+        "heatContribution": { "type": "number", "description": "Latest heat stress indicator H_t (0-100)." },
+        "drynessContribution": { "type": "number", "description": "Latest dryness stress indicator D_t (0-100)." },
+        "observationContribution": { "type": "number", "description": "Latest observation stress indicator O_t (0-100)." },
+        "notes": { "type": "string", "description": "Field notes or arborist remarks." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last update." }
+      },
+      "required": [
+        "userId", "treeCode", "species", "latitude", "longitude", "zone",
+        "registrationType", "visualCondition", "currentPriority", "currentRiskScore",
+        "structuralScore", "exposureScore", "declineScore", "weatherScore", "historyScore",
+        "stressDebt", "previousStressDebt", "heatContribution", "drynessContribution",
+        "observationContribution", "notes", "createdAt", "updatedAt"
+      ]
+    },
+    "ObservationRecord": {
+      "title": "ObservationRecord",
+      "description": "Dated visual inspection or AI Tree Doctor screening report for a specific tree.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID." },
+        "treeId": { "type": "string", "description": "Firestore document ID of the associated tree." },
+        "treeCode": { "type": "string", "description": "Permanent tree code (e.g., TG-VJA-0001)." },
+        "imageTag": { "type": "string", "description": "Image preset key or local URI reference." },
+        "visualCondition": { "type": "string", "enum": ["Healthy appearance", "Monitor", "Needs inspection", "Unclear"], "description": "Overall visual condition." },
+        "imageQuality": { "type": "string", "description": "Assessed photograph clarity and framing quality." },
+        "possibleSpecies": { "type": "string", "description": "Possible species identified from visual cues." },
+        "visibleSymptoms": { "type": "string", "description": "Observable symptoms noted in the photograph." },
+        "possibleConcerns": { "type": "string", "description": "Non-diagnostic possible concerns inferred from visible signs." },
+        "supportingEvidence": { "type": "string", "description": "Visual evidence supporting the observation." },
+        "recommendedAction": { "type": "string", "description": "Recommended next maintenance or inspection step." },
+        "limitations": { "type": "string", "description": "Visual screening limitations and caveats." },
+        "professionalInspection": { "type": "boolean", "description": "Whether urgent certified arborist inspection is recommended." },
+        "source": { "type": "string", "enum": ["AI_TREE_DOCTOR", "FIELD_INSPECTION", "DEMO_SEED"], "description": "Origin of the observation." },
+        "observedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of observation." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of record creation." }
+      },
+      "required": [
+        "userId", "treeId", "treeCode", "imageTag", "visualCondition", "imageQuality",
+        "possibleSpecies", "visibleSymptoms", "possibleConcerns", "supportingEvidence",
+        "recommendedAction", "limitations", "professionalInspection", "source", "observedAt", "createdAt"
+      ]
+    },
+    "StressRecord": {
+      "title": "StressRecord",
+      "description": "Longitudinal Tree Stress Debt calculation snapshot with exponential decay.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID." },
+        "treeId": { "type": "string", "description": "Associated tree document ID." },
+        "date": { "type": "string", "description": "ISO date string for the calculation period." },
+        "heatIndicator": { "type": "number", "description": "Normalized heat indicator H_t (0-100)." },
+        "drynessIndicator": { "type": "number", "description": "Normalized dryness indicator D_t (0-100)." },
+        "observationIndicator": { "type": "number", "description": "Normalized observation stress indicator O_t (0-100)." },
+        "dailyStress": { "type": "number", "description": "Calculated daily environmental stress S_t." },
+        "stressDebt": { "type": "number", "description": "Accumulated Stress Debt TD_t after exponential decay." },
+        "deltaDays": { "type": "number", "description": "Days elapsed since previous stress calculation." },
+        "dataSource": { "type": "string", "enum": ["OPEN_METEO_REGIONAL", "ESTIMATED_SIMULATED", "DEMO_SEED"], "description": "Source of environmental inputs." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of calculation." }
+      },
+      "required": [
+        "userId", "treeId", "date", "heatIndicator", "drynessIndicator",
+        "observationIndicator", "dailyStress", "stressDebt", "deltaDays", "dataSource", "createdAt"
+      ]
+    },
+    "MaintenanceAction": {
+      "title": "MaintenanceAction",
+      "description": "Proposed or scheduled maintenance action evaluated by the What-If Maintenance Optimizer.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID." },
+        "treeId": { "type": "string", "description": "Associated tree document ID." },
+        "treeCode": { "type": "string", "description": "Human-readable tree passport code." },
+        "action": { "type": "string", "description": "Description of the proposed maintenance or arborist intervention." },
+        "estimatedCost": { "type": "number", "description": "Synthetic estimated cost in INR." },
+        "expectedBenefit": { "type": "number", "description": "Expected risk-reduction or health benefit score (0-100)." },
+        "status": { "type": "string", "enum": ["PROPOSED", "SCHEDULED", "COMPLETED", "DEFERRED"], "description": "Current workflow status." },
+        "priorityScore": { "type": "number", "description": "Tree inspection-priority score at the time of proposal." },
+        "isDemoAssumption": { "type": "boolean", "description": "True when cost/benefit values are synthetic demo estimates." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of creation." },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of last status update." }
+      },
+      "required": [
+        "userId", "treeId", "treeCode", "action", "estimatedCost",
+        "expectedBenefit", "status", "priorityScore", "isDemoAssumption", "createdAt", "updatedAt"
+      ]
+    },
+    "WeatherRecord": {
+      "title": "WeatherRecord",
+      "description": "Regional environmental weather telemetry retrieved from Open-Meteo.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID." },
+        "zone": { "type": "string", "description": "Regional zone name (e.g., Vijayawada Urban Core)." },
+        "latitude": { "type": "number", "description": "Latitude of weather query." },
+        "longitude": { "type": "number", "description": "Longitude of weather query." },
+        "temperature": { "type": "number", "description": "Temperature in Celsius." },
+        "humidity": { "type": "number", "description": "Relative humidity percentage." },
+        "windSpeed": { "type": "number", "description": "Wind speed in km/h." },
+        "windGusts": { "type": "number", "description": "Wind gusts in km/h." },
+        "precipitation": { "type": "number", "description": "Precipitation in mm." },
+        "soilMoisture": { "type": "number", "description": "Volumetric soil moisture m3/m3 (-1 if unavailable)." },
+        "dataSource": { "type": "string", "description": "Telemetry provider description." },
+        "recordedAt": { "type": "string", "format": "date-time", "description": "Server timestamp of weather reading." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of record creation." }
+      },
+      "required": [
+        "userId", "zone", "latitude", "longitude", "temperature", "humidity",
+        "windSpeed", "windGusts", "precipitation", "soilMoisture", "dataSource", "recordedAt", "createdAt"
+      ]
+    },
+    "StormComparison": {
+      "title": "StormComparison",
+      "description": "Longitudinal visual comparison between an earlier and newer photograph of a tree via the Storm Memory Engine.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Authenticated owner UID." },
+        "treeId": { "type": "string", "description": "Associated tree document ID." },
+        "treeCode": { "type": "string", "description": "Permanent tree passport ID." },
+        "earlierLabel": { "type": "string", "description": "Label or date of the baseline earlier photograph." },
+        "laterLabel": { "type": "string", "description": "Label or date of the newer comparison photograph." },
+        "isValidComparison": { "type": "boolean", "description": "Whether the two images depict comparable views of a tree." },
+        "anglesComparable": { "type": "boolean", "description": "Whether camera perspectives are reasonably aligned." },
+        "possibleChanges": { "type": "string", "description": "Summary of observed canopy, branch, leaf, or trunk changes." },
+        "newlyVisibleDamage": { "type": "string", "description": "Newly visible broken branches, bark fissures, or leaning." },
+        "unchangedFeatures": { "type": "string", "description": "Structural or foliar features that remained stable." },
+        "limitations": { "type": "string", "description": "Lighting, angle, or occlusion caveats." },
+        "recommendedFollowUp": { "type": "string", "description": "Suggested follow-up inspection action." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Server timestamp of comparison." }
+      },
+      "required": [
+        "userId", "treeId", "treeCode", "earlierLabel", "laterLabel",
+        "isValidComparison", "anglesComparable", "possibleChanges",
+        "newlyVisibleDamage", "unchangedFeatures", "limitations", "recommendedFollowUp", "createdAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/trees/{treeId}": {
+      "schema": { "$ref": "#/entities/TreeRecord" },
+      "description": "Registered urban trees scoped to the authenticated user."
+    },
+    "/observations/{observationId}": {
+      "schema": { "$ref": "#/entities/ObservationRecord" },
+      "description": "Visual observations and AI Tree Doctor screening history."
+    },
+    "/stress_records/{stressRecordId}": {
+      "schema": { "$ref": "#/entities/StressRecord" },
+      "description": "Historical Tree Stress Debt calculation records."
+    },
+    "/maintenance_actions/{actionId}": {
+      "schema": { "$ref": "#/entities/MaintenanceAction" },
+      "description": "Proposed and scheduled tree maintenance actions."
+    },
+    "/weather_records/{weatherRecordId}": {
+      "schema": { "$ref": "#/entities/WeatherRecord" },
+      "description": "Cached regional environmental weather records."
+    },
+    "/storm_comparisons/{comparisonId}": {
+      "schema": { "$ref": "#/entities/StormComparison" },
+      "description": "Saved Storm Memory before/after photograph comparison reports."
+    }
+  }
+}

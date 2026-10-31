@@ -1,0 +1,266 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Core Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 1. TreeRecord Validation Helper
+    function isValidTreeRecord(data) {
+      return data.keys().hasAll([
+               'userId', 'treeCode', 'species', 'latitude', 'longitude', 'zone',
+               'registrationType', 'visualCondition', 'currentPriority', 'currentRiskScore',
+               'structuralScore', 'exposureScore', 'declineScore', 'weatherScore', 'historyScore',
+               'stressDebt', 'previousStressDebt', 'heatContribution', 'drynessContribution',
+               'observationContribution', 'notes', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'treeCode', 'species', 'latitude', 'longitude', 'zone',
+               'registrationType', 'visualCondition', 'currentPriority', 'currentRiskScore',
+               'structuralScore', 'exposureScore', 'declineScore', 'weatherScore', 'historyScore',
+               'stressDebt', 'previousStressDebt', 'heatContribution', 'drynessContribution',
+               'observationContribution', 'notes', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.treeCode is string && data.treeCode.size() >= 3 && data.treeCode.size() <= 64 &&
+             data.species is string && data.species.size() >= 1 && data.species.size() <= 120 &&
+             data.latitude is number && data.latitude >= -90 && data.latitude <= 90 &&
+             data.longitude is number && data.longitude >= -180 && data.longitude <= 180 &&
+             data.zone is string && data.zone.size() >= 1 && data.zone.size() <= 200 &&
+             data.registrationType is string && data.registrationType in ['LIVE_GPS', 'MANUAL', 'DEMO_SEED'] &&
+             data.visualCondition is string && data.visualCondition in ['Healthy appearance', 'Monitor', 'Needs inspection', 'Unclear'] &&
+             data.currentPriority is string && data.currentPriority in ['Low', 'Moderate', 'High', 'Critical'] &&
+             data.currentRiskScore is number && data.currentRiskScore >= 0 && data.currentRiskScore <= 100 &&
+             data.structuralScore is number && data.structuralScore >= -1 && data.structuralScore <= 100 &&
+             data.exposureScore is number && data.exposureScore >= -1 && data.exposureScore <= 100 &&
+             data.declineScore is number && data.declineScore >= -1 && data.declineScore <= 100 &&
+             data.weatherScore is number && data.weatherScore >= -1 && data.weatherScore <= 100 &&
+             data.historyScore is number && data.historyScore >= -1 && data.historyScore <= 100 &&
+             data.stressDebt is number && data.stressDebt >= 0 && data.stressDebt <= 10000 &&
+             data.previousStressDebt is number && data.previousStressDebt >= 0 && data.previousStressDebt <= 10000 &&
+             data.heatContribution is number && data.heatContribution >= 0 && data.heatContribution <= 100 &&
+             data.drynessContribution is number && data.drynessContribution >= 0 && data.drynessContribution <= 100 &&
+             data.observationContribution is number && data.observationContribution >= 0 && data.observationContribution <= 100 &&
+             data.notes is string && data.notes.size() <= 2000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /trees/{treeId} {
+      allow get: if isSignedIn() && isValidId(treeId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(treeId) && isValidTreeRecord(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(treeId) &&
+                       isValidTreeRecord(incoming()) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().treeCode == existing().treeCode &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'species', 'zone', 'visualCondition', 'currentPriority', 'currentRiskScore',
+                         'structuralScore', 'exposureScore', 'declineScore', 'weatherScore', 'historyScore',
+                         'stressDebt', 'previousStressDebt', 'heatContribution', 'drynessContribution',
+                         'observationContribution', 'notes', 'updatedAt'
+                       ]);
+      allow delete: if isSignedIn() && isValidId(treeId) && existing().userId == request.auth.uid;
+    }
+
+    // 2. ObservationRecord Validation Helper (Append-only longitudinal record)
+    function isValidObservationRecord(data) {
+      return data.keys().hasAll([
+               'userId', 'treeId', 'treeCode', 'imageTag', 'visualCondition', 'imageQuality',
+               'possibleSpecies', 'visibleSymptoms', 'possibleConcerns', 'supportingEvidence',
+               'recommendedAction', 'limitations', 'professionalInspection', 'source', 'observedAt', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'treeId', 'treeCode', 'imageTag', 'visualCondition', 'imageQuality',
+               'possibleSpecies', 'visibleSymptoms', 'possibleConcerns', 'supportingEvidence',
+               'recommendedAction', 'limitations', 'professionalInspection', 'source', 'observedAt', 'createdAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.treeId is string && isValidId(data.treeId) &&
+             data.treeCode is string && data.treeCode.size() >= 3 && data.treeCode.size() <= 64 &&
+             data.imageTag is string && data.imageTag.size() <= 500 &&
+             data.visualCondition is string && data.visualCondition in ['Healthy appearance', 'Monitor', 'Needs inspection', 'Unclear'] &&
+             data.imageQuality is string && data.imageQuality.size() <= 200 &&
+             data.possibleSpecies is string && data.possibleSpecies.size() <= 200 &&
+             data.visibleSymptoms is string && data.visibleSymptoms.size() <= 2000 &&
+             data.possibleConcerns is string && data.possibleConcerns.size() <= 2000 &&
+             data.supportingEvidence is string && data.supportingEvidence.size() <= 2000 &&
+             data.recommendedAction is string && data.recommendedAction.size() <= 2000 &&
+             data.limitations is string && data.limitations.size() <= 2000 &&
+             data.professionalInspection is bool &&
+             data.source is string && data.source in ['AI_TREE_DOCTOR', 'FIELD_INSPECTION', 'DEMO_SEED'] &&
+             data.observedAt is timestamp && data.observedAt <= request.time &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /observations/{observationId} {
+      allow get: if isSignedIn() && isValidId(observationId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(observationId) && isValidObservationRecord(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(observationId) && existing().userId == request.auth.uid;
+    }
+
+    // 3. StressRecord Validation Helper (Append-only longitudinal record)
+    function isValidStressRecord(data) {
+      return data.keys().hasAll([
+               'userId', 'treeId', 'date', 'heatIndicator', 'drynessIndicator',
+               'observationIndicator', 'dailyStress', 'stressDebt', 'deltaDays', 'dataSource', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'treeId', 'date', 'heatIndicator', 'drynessIndicator',
+               'observationIndicator', 'dailyStress', 'stressDebt', 'deltaDays', 'dataSource', 'createdAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.treeId is string && isValidId(data.treeId) &&
+             data.date is string && data.date.size() >= 8 && data.date.size() <= 32 &&
+             data.heatIndicator is number && data.heatIndicator >= 0 && data.heatIndicator <= 100 &&
+             data.drynessIndicator is number && data.drynessIndicator >= 0 && data.drynessIndicator <= 100 &&
+             data.observationIndicator is number && data.observationIndicator >= 0 && data.observationIndicator <= 100 &&
+             data.dailyStress is number && data.dailyStress >= 0 && data.dailyStress <= 100 &&
+             data.stressDebt is number && data.stressDebt >= 0 && data.stressDebt <= 10000 &&
+             data.deltaDays is number && data.deltaDays >= 0 && data.deltaDays <= 3650 &&
+             data.dataSource is string && data.dataSource in ['OPEN_METEO_REGIONAL', 'ESTIMATED_SIMULATED', 'DEMO_SEED'] &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /stress_records/{stressRecordId} {
+      allow get: if isSignedIn() && isValidId(stressRecordId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(stressRecordId) && isValidStressRecord(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(stressRecordId) && existing().userId == request.auth.uid;
+    }
+
+    // 4. MaintenanceAction Validation Helper
+    function isValidMaintenanceAction(data) {
+      return data.keys().hasAll([
+               'userId', 'treeId', 'treeCode', 'action', 'estimatedCost',
+               'expectedBenefit', 'status', 'priorityScore', 'isDemoAssumption', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'treeId', 'treeCode', 'action', 'estimatedCost',
+               'expectedBenefit', 'status', 'priorityScore', 'isDemoAssumption', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.treeId is string && isValidId(data.treeId) &&
+             data.treeCode is string && data.treeCode.size() >= 3 && data.treeCode.size() <= 64 &&
+             data.action is string && data.action.size() >= 2 && data.action.size() <= 500 &&
+             data.estimatedCost is number && data.estimatedCost > 0 && data.estimatedCost <= 10000000 &&
+             data.expectedBenefit is number && data.expectedBenefit >= 0 && data.expectedBenefit <= 100 &&
+             data.status is string && data.status in ['PROPOSED', 'SCHEDULED', 'COMPLETED', 'DEFERRED'] &&
+             data.priorityScore is number && data.priorityScore >= 0 && data.priorityScore <= 100 &&
+             data.isDemoAssumption is bool &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    match /maintenance_actions/{actionId} {
+      allow get: if isSignedIn() && isValidId(actionId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(actionId) && isValidMaintenanceAction(incoming());
+      allow update: if isSignedIn() &&
+                       isValidId(actionId) &&
+                       isValidMaintenanceAction(incoming()) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().treeId == existing().treeId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'status', 'estimatedCost', 'expectedBenefit', 'priorityScore', 'updatedAt'
+                       ]);
+      allow delete: if isSignedIn() && isValidId(actionId) && existing().userId == request.auth.uid;
+    }
+
+    // 5. WeatherRecord Validation Helper
+    function isValidWeatherRecord(data) {
+      return data.keys().hasAll([
+               'userId', 'zone', 'latitude', 'longitude', 'temperature', 'humidity',
+               'windSpeed', 'windGusts', 'precipitation', 'soilMoisture', 'dataSource', 'recordedAt', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'zone', 'latitude', 'longitude', 'temperature', 'humidity',
+               'windSpeed', 'windGusts', 'precipitation', 'soilMoisture', 'dataSource', 'recordedAt', 'createdAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.zone is string && data.zone.size() >= 1 && data.zone.size() <= 200 &&
+             data.latitude is number && data.latitude >= -90 && data.latitude <= 90 &&
+             data.longitude is number && data.longitude >= -180 && data.longitude <= 180 &&
+             data.temperature is number && data.temperature >= -60 && data.temperature <= 70 &&
+             data.humidity is number && data.humidity >= 0 && data.humidity <= 100 &&
+             data.windSpeed is number && data.windSpeed >= 0 && data.windSpeed <= 500 &&
+             data.windGusts is number && data.windGusts >= 0 && data.windGusts <= 500 &&
+             data.precipitation is number && data.precipitation >= 0 && data.precipitation <= 5000 &&
+             data.soilMoisture is number && data.soilMoisture >= -1 && data.soilMoisture <= 100 &&
+             data.dataSource is string && data.dataSource.size() >= 1 && data.dataSource.size() <= 200 &&
+             data.recordedAt is timestamp && data.recordedAt <= request.time &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /weather_records/{weatherRecordId} {
+      allow get: if isSignedIn() && isValidId(weatherRecordId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(weatherRecordId) && isValidWeatherRecord(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(weatherRecordId) && existing().userId == request.auth.uid;
+    }
+
+    // 6. StormComparison Validation Helper
+    function isValidStormComparison(data) {
+      return data.keys().hasAll([
+               'userId', 'treeId', 'treeCode', 'earlierLabel', 'laterLabel',
+               'isValidComparison', 'anglesComparable', 'possibleChanges',
+               'newlyVisibleDamage', 'unchangedFeatures', 'limitations', 'recommendedFollowUp', 'createdAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'treeId', 'treeCode', 'earlierLabel', 'laterLabel',
+               'isValidComparison', 'anglesComparable', 'possibleChanges',
+               'newlyVisibleDamage', 'unchangedFeatures', 'limitations', 'recommendedFollowUp', 'createdAt'
+             ]) &&
+             data.userId is string && data.userId == request.auth.uid && data.userId.size() <= 128 &&
+             data.treeId is string && isValidId(data.treeId) &&
+             data.treeCode is string && data.treeCode.size() >= 3 && data.treeCode.size() <= 64 &&
+             data.earlierLabel is string && data.earlierLabel.size() >= 1 && data.earlierLabel.size() <= 200 &&
+             data.laterLabel is string && data.laterLabel.size() >= 1 && data.laterLabel.size() <= 200 &&
+             data.isValidComparison is bool &&
+             data.anglesComparable is bool &&
+             data.possibleChanges is string && data.possibleChanges.size() <= 2000 &&
+             data.newlyVisibleDamage is string && data.newlyVisibleDamage.size() <= 2000 &&
+             data.unchangedFeatures is string && data.unchangedFeatures.size() <= 2000 &&
+             data.limitations is string && data.limitations.size() <= 2000 &&
+             data.recommendedFollowUp is string && data.recommendedFollowUp.size() <= 2000 &&
+             data.createdAt is timestamp && data.createdAt <= request.time;
+    }
+
+    match /storm_comparisons/{comparisonId} {
+      allow get: if isSignedIn() && isValidId(comparisonId) && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidId(comparisonId) && isValidStormComparison(incoming());
+      allow update: if false;
+      allow delete: if isSignedIn() && isValidId(comparisonId) && existing().userId == request.auth.uid;
+    }
+  }
+}
